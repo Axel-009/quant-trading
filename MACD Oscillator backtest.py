@@ -7,12 +7,30 @@ Created on Tue Feb  6 11:57:46 2018
 
 # In[1]:
 
-#need to get fix yahoo finance package first
+# Updated to use yfinance (fix_yahoo_finance is deprecated)
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import fix_yahoo_finance as yf
+import yfinance as yf
+
+# Import configuration and validators
+try:
+    from config import PREVIEW_DIR
+    from validators import (
+        get_validated_input,
+        validate_ticker,
+        validate_date,
+        validate_date_range,
+        validate_moving_average_period,
+        validate_ma_pair,
+        ValidationError
+    )
+    USE_VALIDATORS = True
+except ImportError:
+    print("Warning: config.py or validators.py not found. Using basic validation.")
+    USE_VALIDATORS = False
+    PREVIEW_DIR = 'preview'
 
 
 
@@ -103,36 +121,85 @@ def plot(new, ticker):
 # In[5]:
 
 def main():
-    
+
     #input the long moving average and short moving average period
     #for the classic MACD, it is 12 and 26
     #once a upon a time you got six trading days in a week
     #so it is two week moving average versus one month moving average
     #for now, the ideal choice would be 10 and 21
-    
+
     global ma1,ma2,stdate,eddate,ticker,slicer
 
     #macd is easy and effective
     #there is just one issue
     #entry signal is always late
     #watch out for downward EMA spirals!
-    ma1=int(input('ma1:'))
-    ma2=int(input('ma2:'))
-    stdate=input('start date in format yyyy-mm-dd:')
-    eddate=input('end date in format yyyy-mm-dd:')
-    ticker=input('ticker:')
 
-    #slicing the downloaded dataset
-    #if the dataset is too large, backtesting plot would look messy
-    #you get too many markers cluster together
-    slicer=int(input('slicing:'))
+    print("=== MACD Oscillator 백테스팅 ===\n")
 
-    #downloading data
-    df=yf.download(ticker,start=stdate,end=eddate)
-    
-    new=signal_generation(df,macd)
-    new=new[slicer:]
-    plot(new, ticker)
+    try:
+        if USE_VALIDATORS:
+            # Use validated input
+            ma1 = get_validated_input(
+                'ma1 (단기 이동평균, 권장: 10): ',
+                validate_moving_average_period
+            )
+            ma2 = get_validated_input(
+                'ma2 (장기 이동평균, 권장: 21): ',
+                validate_moving_average_period
+            )
+            validate_ma_pair(ma1, ma2)
+
+            stdate = get_validated_input(
+                '시작 날짜 (YYYY-MM-DD): ',
+                validate_date
+            )
+            eddate = get_validated_input(
+                '종료 날짜 (YYYY-MM-DD): ',
+                validate_date
+            )
+            validate_date_range(stdate, eddate)
+
+            ticker = get_validated_input('티커 심볼: ', validate_ticker)
+
+            slicer = get_validated_input(
+                '슬라이싱 (차트 표시할 데이터 시작점): ',
+                validate_moving_average_period,
+                min_val=0,
+                max_val=10000
+            )
+        else:
+            # Fallback to basic input
+            ma1 = int(input('ma1:'))
+            ma2 = int(input('ma2:'))
+            stdate = input('start date in format yyyy-mm-dd:')
+            eddate = input('end date in format yyyy-mm-dd:')
+            ticker = input('ticker:')
+            slicer = int(input('slicing:'))
+
+        #downloading data
+        print(f"\n데이터 다운로드 중: {ticker} ({stdate} ~ {eddate})...")
+        df = yf.download(ticker, start=stdate, end=eddate, progress=False)
+
+        if df.empty:
+            raise ValueError(f"'{ticker}'에 대한 데이터를 가져올 수 없습니다. 티커를 확인해주세요.")
+
+        print(f"✓ {len(df)}개의 데이터 포인트 다운로드 완료\n")
+
+        new = signal_generation(df, macd)
+        new = new[slicer:]
+        plot(new, ticker)
+
+        print("\n백테스팅 완료!")
+
+    except ValidationError as e:
+        print(f"\n❌ 입력 검증 오류: {e}")
+        return
+    except Exception as e:
+        print(f"\n❌ 오류 발생: {e}")
+        import traceback
+        traceback.print_exc()
+        return
 
 
 #how to calculate stats could be found from my other code called Heikin-Ashi

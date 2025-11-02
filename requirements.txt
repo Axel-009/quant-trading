@@ -1,0 +1,29 @@
+# Core Data Science Libraries
+pandas>=1.0.0
+numpy>=1.18.0
+matplotlib>=3.0.0
+scipy>=1.5.0
+
+# Financial Data
+yfinance>=0.1.63
+
+# Statistical Analysis
+statsmodels>=0.12.0
+
+# Optimization (for Smart Farmers project)
+cvxopt>=1.2.0
+
+# Utilities
+python-dateutil>=2.8.0
+
+# Web App (optional - for deployment)
+streamlit>=1.20.0
+plotly>=5.0.0
+flask>=2.0.0
+flask-cors>=3.0.0
+gunicorn>=20.0.0
+
+# Development (optional)
+pytest>=6.0.0
+black>=21.0
+flake8>=3.9.0
